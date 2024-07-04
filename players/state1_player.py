@@ -12,11 +12,19 @@ from lib.player_base import Player, PlayerShip
 class state1_player(Player):
 
     def __init__(self, seed=0):
+        self.stage = 0;
         random.seed(seed)
 
         # フィールドを2x2の配列として持っている．
         self.field = [[i, j] for i in range(Player.FIELD_SIZE)
                       for j in range(Player.FIELD_SIZE)]
+        
+        # 相手の位置の予想。相手の行動と自分の行動で更新する。
+        # 0：未確定　 -1:そのマスには相手の船がいない
+        # 1:　そのマスには相手の船がいる可能性が高い 2:そのマスには確実にwがいる
+        # 3: そのマスには確実にcがいる 4:そのマスには確実にsがいる
+        self.opponent_field = [[i, j, 0] for i in range(Player.FIELD_SIZE)
+                      for j in range(Player.FIELD_SIZE) for k in range(Player.FIELD_SIZE)]
 
         # 初期配置を非復元抽出でランダムに決める．
         #ps = random.sample(self.field, 3)
