@@ -57,7 +57,7 @@ class Player:
 
     # 通知された情報で艦の状態を更新する．
     def update(self, json_):
-        time.sleep(0.01)
+        time.sleep(0.05)
         cond = json.loads(json_)['condition']['me']
         for ship_type in list(self.ships):
             if ship_type not in cond:

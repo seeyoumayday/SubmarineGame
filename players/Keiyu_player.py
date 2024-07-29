@@ -66,7 +66,8 @@ class KeiyuPlayer(Player):
     #今は攻撃のみを行うことにしている
     def chooseAction(self):
         return "attack"
-
+    
+    # max_priorityをリストにして、その中からランダムに選ぶ
     def chooseTarget(self):
         #まずは攻撃することができるマスをリストアップ
         attackable = []
@@ -76,28 +77,36 @@ class KeiyuPlayer(Player):
                     attackable.append(posToIndex(i,j))    
         #攻撃できるマスの中で一番優先度の高いマスを選ぶ
         print(attackable)
-        maximum_priority = attackable[0]
+        # まずは一番優先度の高いマスの優先度を知る
+        MaxPriority = -1
         for i in range(len(attackable)):
-            if self.opponentsPlacementExpectedByMe[attackable[i]][2] > self.opponentsPlacementExpectedByMe[maximum_priority][2]:
-                maximum_priority = attackable[i]
-        print(maximum_priority)
-        return self.field[maximum_priority]
+            if self.opponentsPlacementExpectedByMe[attackable[i]][2] > MaxPriority:
+                MaxPriority = self.opponentsPlacementExpectedByMe[attackable[i]][2]
+
+        # 一番優先度の高いマスをリストアップ
+        PlacesHaveMaxPriority = []
+        for i in range(len(attackable)):
+            if self.opponentsPlacementExpectedByMe[attackable[i]][2] == MaxPriority:
+                PlacesHaveMaxPriority.append(attackable[i])
+        print(PlacesHaveMaxPriority)
+        return self.field[random.choice(PlacesHaveMaxPriority)]
+    
     
     def update_ExpectationOfOpponentsPlacement_afterMyAction(self,json_):
         if "result" in json.loads(json_):
             res = json.loads(json_)['result']
-            # 攻撃した時の処理
+            # 自分が攻撃した時の処理
             if ("attacked" in res):
                 attacked = res['attacked']
                 pos = attacked['position']
                 if("hit" in attacked):
                     hit = attacked['hit']
                     if(hit == "w"):
-                        self.opponentsPlacementExpectedByMe[self.posToIndex(*pos)][2] = 2
+                        self.opponentsPlacementExpectedByMe[posToIndex(*pos)][2] = 2
                     elif(hit == "c"):
-                        self.opponentsPlacementExpectedByMe[self.posToIndex(*pos)][2] = 3
+                        self.opponentsPlacementExpectedByMe[posToIndex(*pos)][2] = 3
                     elif(hit == "s"):
-                        self.opponentsPlacementExpectedByMe[self.posToIndex(*pos)][2] = 4
+                        self.opponentsPlacementExpectedByMe[posToIndex(*pos)][2] = 4
                 elif ("near" in attacked):
                     for i in range(len(attacked['near'])):
                         # positionの周りの8近傍を1にする
@@ -107,15 +116,33 @@ class KeiyuPlayer(Player):
                         dx = [1,1,0,-1,-1,-1,0,1]
                         dy = [0,1,1,1,0,-1,-1,-1]
                         for j in range(8):
-                            if 0 <= pos[0]+dx[j] < Player.FIELD_SIZE \
-                                and 0 <= pos[1]+dy[j] < Player.FIELD_SIZE:
-                                probable.append(self.posToIndex(pos[0]+dx[j],pos[1]+dy[j]))
+                            position = [pos[0]+dx[j],pos[1]+dy[j]]
+                            if 0 <= position[0] < Player.FIELD_SIZE \
+                                and 0 <= position[1] < Player.FIELD_SIZE:
+                                probable.append(posToIndex(position[0],position[1]))
                         for nearPos in probable:
-                            if self.opponentsPlacementExpectedByMe[nearPos][2] >= 2:
-                                continue
-                            else:
+                            if self.opponentsPlacementExpectedByMe[nearPos][2] < 2:
                                 self.opponentsPlacementExpectedByMe[nearPos][2] = 1
-            # 移動した時の処理
+            # 相手の機体が死んだら、そのマスを-1にする
+            if "condition" in json.loads(json_):
+                condition = json.loads(json_)['condition']
+                enemy_ships = condition["enemy"]
+                if not "w" in enemy_ships:
+                    for i in range(Player.FIELD_SIZE):
+                        for j in range(Player.FIELD_SIZE):
+                            if self.opponentsPlacementExpectedByMe[posToIndex(i,j)][2] == 2:
+                                self.opponentsPlacementExpectedByMe[posToIndex(i,j)][2] = -1
+                if not "c" in enemy_ships:
+                    for i in range(Player.FIELD_SIZE):
+                        for j in range(Player.FIELD_SIZE):
+                            if self.opponentsPlacementExpectedByMe[posToIndex(i,j)][2] == 3:
+                                self.opponentsPlacementExpectedByMe[posToIndex(i,j)][2] = -1
+                if not "s" in enemy_ships:
+                    for i in range(Player.FIELD_SIZE):
+                        for j in range(Player.FIELD_SIZE):
+                            if self.opponentsPlacementExpectedByMe[posToIndex(i,j)][2] == 4:
+                                self.opponentsPlacementExpectedByMe[posToIndex(i,j)][2] = -1
+            # 自分が移動した時の処理
             else:
                 pass
 
@@ -139,6 +166,7 @@ def main(host, port, seed=0):
                     sockfile.write(player.action()+'\n')
                     get_msg = sockfile.readline()
                     player.update(get_msg)
+                    player.update_ExpectationOfOpponentsPlacement_afterMyAction(get_msg)
                 elif info == "waiting":
                     get_msg = sockfile.readline()
                     player.update(get_msg)
