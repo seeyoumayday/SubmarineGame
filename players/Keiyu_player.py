@@ -15,6 +15,7 @@ class KeiyuPlayer(Player):
     def __init__(self):
 
         self.turn = 0
+        self.isEmergency = [False,False,False]
 
         # フィールドを2x2の配列として持っている．
         self.field = [[i, j] for i in range(Player.FIELD_SIZE)
@@ -50,8 +51,19 @@ class KeiyuPlayer(Player):
     def action(self):
         act = self.chooseAction()
 
+        # isEmergencyがTrueの場合はmoveを選ぶ
+        # w,c,sの順でisEmergencyがTrueになっている場合はmoveを選ぶ
         if act == "move":
-            ship = random.choice(list(self.ships.values()))
+            # ship = random.choice(list(self.ships.values()))
+            if self.isEmergency[0]:
+                ship = self.ships['w']
+            elif self.isEmergency[1]:
+                ship = self.ships['c']
+            elif self.isEmergency[2]:
+                ship = self.ships['s']
+            
+            self.isEmergency = [False,False,False]
+            #行ける場所にランダムに逃げる
             to = random.choice(self.field)
             while not ship.can_reach(to) or not self.overlap(to) is None:
                 to = random.choice(self.field)
@@ -64,11 +76,14 @@ class KeiyuPlayer(Player):
             to = self.chooseTarget()
             return json.dumps(self.attack(to))
     
-    #今は攻撃のみを行うことにしている
+    # 今は攻撃のみを行うことにしている
+    # 逃走は、前のターン、残り体力１の船の近傍に攻撃された場合に行う
     def chooseAction(self):
-        return "attack"
+        if self.isEmergency[0] or self.isEmergency[1] or self.isEmergency[2]:
+            return "move"
+        else:
+            return "attack"
     
-    # max_priorityをリストにして、その中からランダムに選ぶ
     def chooseTarget(self):
         #まずは攻撃することができるマスをリストアップ
         attackable = []
@@ -89,7 +104,6 @@ class KeiyuPlayer(Player):
             if self.opponentsPlacementExpectedByMe[attackable[i]][2] == MaxPriority:
                 PlacesHaveMaxPriority.append(attackable[i])
         return self.field[random.choice(PlacesHaveMaxPriority)]
-    
 
     def update_ExpectationOfOpponentsPlacement_afterMyAction(self,json_):
         if "result" in json.loads(json_):
@@ -198,6 +212,29 @@ class KeiyuPlayer(Player):
                         self.opponentsPlacementExpectedByMe\
                             [posToIndex(pos_s[0]+distance[0],pos_s[1]+distance[1])][2] = 4
 
+    def update_isEmergency(self, json_):
+            if "result" in json.loads(json_):
+                res = json.loads(json_)['result']
+                con = json.loads(json_)['condition']
+                # ある船の近傍が攻撃されて、
+                # かつ近傍が攻撃された船の残り体力が１の場合、isEmergencyをTrueにする
+                # is Emergencyは[w,c,s]の順で格納されている
+                if "attacked" in res:
+                    attacked = res['attacked']
+                    if "near" in attacked:
+                        near = attacked['near']
+                        for i in range(len(near)):
+                            if con['me'][near[i]]['hp'] == 1:
+                                if near[i] == "w":
+                                    self.isEmergency[0] = True
+                                elif near[i] == "c":
+                                    self.isEmergency[1] = True
+                                elif near[i] == "s":
+                                    self.isEmergency[2] = True
+            else:
+                pass
+
+
 # 仕様に従ってサーバとソケット通信を行う．
 def main(host, port, seed=0):
     assert isinstance(host, str) and isinstance(port, int)
@@ -223,6 +260,7 @@ def main(host, port, seed=0):
                     get_msg = sockfile.readline()
                     player.update(get_msg)
                     player.update_ExpectationOfOpponentsPlacement_afterOpponentsAction(get_msg)
+                    player.update_isEmergency(get_msg)
                 elif info == "you win":
                     print("It takes ",player.turn, " turns.")
                     break
