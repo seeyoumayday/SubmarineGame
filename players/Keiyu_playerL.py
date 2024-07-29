@@ -34,8 +34,8 @@ class KeiyuPlayer(Player):
                       for j in range(Player.FIELD_SIZE)]
         
         # 相手から予想されている自分の船の位置。自分と相手の行動で更新する。
-        self.myPlacementExpectedByOpponent = [[i, j, 0] for i in range(Player.FIELD_SIZE) 
-                                              for j in range(Player.FIELD_SIZE)]
+        #self.myPlacementExpectedByOpponent = [[i, j, 0] for i in range(Player.FIELD_SIZE) 
+        #                                      for j in range(Player.FIELD_SIZE)]
 
         # 初期配置を以下の４つ（それぞれ９０度ずつ回転している）からランダムに選ぶ；
         positions1 = {'w': self.field[6], 'c': self.field[21], 's': self.field[4]}
@@ -51,7 +51,6 @@ class KeiyuPlayer(Player):
 
         # isEmergencyがTrueの場合はrunを選ぶ
         if act == "run":
-            # ship = random.choice(list(self.ships.values()))
             if self.isEmergency[0]:
                 ship = self.ships['w']
             elif self.isEmergency[1]:
@@ -133,8 +132,6 @@ class KeiyuPlayer(Player):
                         self.opponentsPlacementExpectedByMe[posToIndex(*pos)][2] = 2
                     elif(hit == "c"):
                         self.opponentsPlacementExpectedByMe[posToIndex(*pos)][2] = 3
-                    elif(hit == "s"):
-                        self.opponentsPlacementExpectedByMe[posToIndex(*pos)][2] = 4
                 elif ("near" in attacked):
                     for i in range(len(attacked['near'])):
                         # positionの周りの8近傍を1にする
@@ -212,7 +209,7 @@ class KeiyuPlayer(Player):
                         self.opponentsPlacementExpectedByMe[posToIndex(*pos_c)][2] = -1
                         self.opponentsPlacementExpectedByMe\
                             [posToIndex(pos_c[0]+distance[0],pos_c[1]+distance[1])][2] = 3
-                else:
+                elif (moved['ship'] == "s"):
                     # まずは優先度4のマスがあるかどうか調べる
                     # あればそのマスを覚える
                     # なければ無視する
