@@ -62,7 +62,6 @@ class KeiyuPlayer(Player):
             while not self.can_attack(to):
                 to = random.choice(self.field)
             to = self.chooseTarget()
-            print(to)
             return json.dumps(self.attack(to))
     
     #今は攻撃のみを行うことにしている
@@ -78,7 +77,6 @@ class KeiyuPlayer(Player):
                 if self.can_attack([i,j]):
                     attackable.append(posToIndex(i,j))    
         #攻撃できるマスの中で一番優先度の高いマスを選ぶ
-        print(attackable)
         # まずは一番優先度の高いマスの優先度を知る
         MaxPriority = -1
         for i in range(len(attackable)):
@@ -90,7 +88,6 @@ class KeiyuPlayer(Player):
         for i in range(len(attackable)):
             if self.opponentsPlacementExpectedByMe[attackable[i]][2] == MaxPriority:
                 PlacesHaveMaxPriority.append(attackable[i])
-        print(PlacesHaveMaxPriority)
         return self.field[random.choice(PlacesHaveMaxPriority)]
     
 
@@ -227,10 +224,10 @@ def main(host, port, seed=0):
                     player.update(get_msg)
                     player.update_ExpectationOfOpponentsPlacement_afterOpponentsAction(get_msg)
                 elif info == "you win":
-                    print(player.turn)
+                    print("It takes ",player.turn, " turns.")
                     break
                 elif info == "you lose":
-                    print(player.turn)
+                    print("It takes ",player.turn, " turns.")
                     break
                 elif info == "even":
                     break
