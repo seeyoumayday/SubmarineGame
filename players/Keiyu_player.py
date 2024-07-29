@@ -44,10 +44,7 @@ class KeiyuPlayer(Player):
         positions = random.choice([positions1, positions2, positions3, positions4])
         super().__init__(positions)
 
-    #
-    # 移動か攻撃かランダムに決める．
-    # どれがどこへ移動するか，あるいはどこに攻撃するかもランダム．
-    #
+
     def action(self):
         act = self.chooseAction()
 
@@ -76,7 +73,7 @@ class KeiyuPlayer(Player):
             to = self.chooseTarget()
             return json.dumps(self.attack(to))
     
-    # 今は攻撃のみを行うことにしている
+
     # 逃走は、前のターン、残り体力１の船の近傍に攻撃された場合に行う
     def chooseAction(self):
         if self.isEmergency[0] or self.isEmergency[1] or self.isEmergency[2]:
