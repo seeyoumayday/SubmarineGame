@@ -15,6 +15,7 @@ class KeiyuPlayer(Player):
     def __init__(self):
 
         self.turn = 0
+        self.countShip = 3
         self.isEmergency = [False,False,False]
 
         # フィールドを2x2の配列として持っている．
@@ -48,9 +49,8 @@ class KeiyuPlayer(Player):
     def action(self):
         act = self.chooseAction()
 
-        # isEmergencyがTrueの場合はmoveを選ぶ
-        # w,c,sの順でisEmergencyがTrueになっている場合はmoveを選ぶ
-        if act == "move":
+        # isEmergencyがTrueの場合はrunを選ぶ
+        if act == "run":
             # ship = random.choice(list(self.ships.values()))
             if self.isEmergency[0]:
                 ship = self.ships['w']
@@ -58,14 +58,20 @@ class KeiyuPlayer(Player):
                 ship = self.ships['c']
             elif self.isEmergency[2]:
                 ship = self.ships['s']
-            
             self.isEmergency = [False,False,False]
             #行ける場所にランダムに逃げる
             to = random.choice(self.field)
             while not ship.can_reach(to) or not self.overlap(to) is None:
                 to = random.choice(self.field)
-
             return json.dumps(self.move(ship.type, to))
+        
+        elif act == "move":
+            ship = random.choice(list(self.ships.values()))
+            to = random.choice(self.field)
+            while not ship.can_reach(to) or not self.overlap(to) is None:
+                to = random.choice(self.field)
+            return json.dumps(self.move(ship.type, to))            
+
         elif act == "attack":
             to = random.choice(self.field)
             while not self.can_attack(to):
@@ -73,11 +79,23 @@ class KeiyuPlayer(Player):
             to = self.chooseTarget()
             return json.dumps(self.attack(to))
     
+    # 自分が攻撃することができるマスの数を返す
+    def countAttackable(self):
+        count = 0
+        for i in range(Player.FIELD_SIZE):
+            for j in range(Player.FIELD_SIZE):
+                if self.can_attack([i,j]):
+                    count += 1
+        return count
 
     # 逃走は、前のターン、残り体力１の船の近傍に攻撃された場合に行う
+    # 移動は、残りの自分の船の数に対して自分が攻撃できるマスがあまりに少ない時に移動する
     def chooseAction(self):
         if self.isEmergency[0] or self.isEmergency[1] or self.isEmergency[2]:
-            return "move"
+            return "run"
+        elif (self.countShip == 3 and self.countAttackable() <= 12)\
+            or (self.countShip == 2 and self.countAttackable() <= 12):
+            return "move"       
         else:
             return "attack"
     
@@ -209,6 +227,10 @@ class KeiyuPlayer(Player):
                         self.opponentsPlacementExpectedByMe\
                             [posToIndex(pos_s[0]+distance[0],pos_s[1]+distance[1])][2] = 4
 
+    def update_countShip(self, json_):
+        me = json.loads(json_)['condition']['me']
+        self.countShip = len(me)
+
     def update_isEmergency(self, json_):
             if "result" in json.loads(json_):
                 res = json.loads(json_)['result']
@@ -258,6 +280,7 @@ def main(host, port, seed=0):
                     player.update(get_msg)
                     player.update_ExpectationOfOpponentsPlacement_afterOpponentsAction(get_msg)
                     player.update_isEmergency(get_msg)
+                    player.update_countShip(get_msg)
                 elif info == "you win":
                     print("It takes ",player.turn, " turns.")
                     break
