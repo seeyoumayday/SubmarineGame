@@ -14,6 +14,8 @@ class KeiyuPlayer(Player):
 
     def __init__(self):
 
+        self.turn = 0
+
         # フィールドを2x2の配列として持っている．
         self.field = [[i, j] for i in range(Player.FIELD_SIZE)
                       for j in range(Player.FIELD_SIZE)]
@@ -91,7 +93,7 @@ class KeiyuPlayer(Player):
         print(PlacesHaveMaxPriority)
         return self.field[random.choice(PlacesHaveMaxPriority)]
     
-    
+
     def update_ExpectationOfOpponentsPlacement_afterMyAction(self,json_):
         if "result" in json.loads(json_):
             res = json.loads(json_)['result']
@@ -146,6 +148,58 @@ class KeiyuPlayer(Player):
             else:
                 pass
 
+    def update_ExpectationOfOpponentsPlacement_afterOpponentsAction(self,json_):
+        if "result" in json.loads(json_):
+            res = json.loads(json_)['result']
+            # 相手が攻撃した時の処理
+            if ("attacked" in res):
+                pass
+            # 相手が移動した時の処理
+            else:
+                moved = res['moved']
+                distance = moved['distance']
+                if (moved['ship'] == "w"):
+                    # まずは優先度２のマスがあるかどうか調べる
+                    # あればそのマスを覚える
+                    # なければ無視する
+                    pos_w = [-1,-1]
+                    for i in range(Player.FIELD_SIZE):
+                        for j in range(Player.FIELD_SIZE):
+                            if self.opponentsPlacementExpectedByMe[posToIndex(i,j)][2] == 2:
+                                pos_w = [i,j]
+                    if pos_w != [-1,-1]:
+                        #まずはopponentsPlacementExpectedByMeを更新
+                        self.opponentsPlacementExpectedByMe[posToIndex(*pos_w)][2] = -1
+                        self.opponentsPlacementExpectedByMe\
+                            [posToIndex(pos_w[0]+distance[0],pos_w[1]+distance[1])][2] = 2
+                elif (moved['ship'] == "c"):
+                    # まずは優先度3のマスがあるかどうか調べる
+                    # あればそのマスを覚える
+                    # なければ無視する
+                    pos_c = [-1,-1]
+                    for i in range(Player.FIELD_SIZE):
+                        for j in range(Player.FIELD_SIZE):
+                            if self.opponentsPlacementExpectedByMe[posToIndex(i,j)][2] == 3:
+                                pos_c = [i,j]
+                    if pos_c != [-1,-1]:
+                        #まずはopponentsPlacementExpectedByMeを更新
+                        self.opponentsPlacementExpectedByMe[posToIndex(*pos_c)][2] = -1
+                        self.opponentsPlacementExpectedByMe\
+                            [posToIndex(pos_c[0]+distance[0],pos_c[1]+distance[1])][2] = 3
+                else:
+                    # まずは優先度4のマスがあるかどうか調べる
+                    # あればそのマスを覚える
+                    # なければ無視する
+                    pos_s = [-1,-1]
+                    for i in range(Player.FIELD_SIZE):
+                        for j in range(Player.FIELD_SIZE):
+                            if self.opponentsPlacementExpectedByMe[posToIndex(i,j)][2] == 4:
+                                pos_s = [i,j]
+                    if pos_s != [-1,-1]:
+                        #まずはopponentsPlacementExpectedByMeを更新
+                        self.opponentsPlacementExpectedByMe[posToIndex(*pos_s)][2] = -1
+                        self.opponentsPlacementExpectedByMe\
+                            [posToIndex(pos_s[0]+distance[0],pos_s[1]+distance[1])][2] = 4
 
 # 仕様に従ってサーバとソケット通信を行う．
 def main(host, port, seed=0):
@@ -162,6 +216,7 @@ def main(host, port, seed=0):
             while True:
                 info = sockfile.readline().rstrip()
                 print(info)
+                player.turn += 1
                 if info == "your turn":
                     sockfile.write(player.action()+'\n')
                     get_msg = sockfile.readline()
@@ -170,9 +225,12 @@ def main(host, port, seed=0):
                 elif info == "waiting":
                     get_msg = sockfile.readline()
                     player.update(get_msg)
+                    player.update_ExpectationOfOpponentsPlacement_afterOpponentsAction(get_msg)
                 elif info == "you win":
+                    print(player.turn)
                     break
                 elif info == "you lose":
+                    print(player.turn)
                     break
                 elif info == "even":
                     break
